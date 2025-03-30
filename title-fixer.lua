@@ -219,7 +219,7 @@ local function main()
       if choice == 1 then
         local str = encTitle.."/"..iv.name.."/"..jv.name 
         show_text(str)
-        failures = failures + test_title(str)
+        failures = failures + test_title(str, dlc)
       elseif choice == 2 then
         local str = string.gsub(encTitle, "/*.*title", "A:/title").."/"..iv.name.."/"..jv.name 
         show_text(str)
