@@ -54,14 +54,15 @@ local function delete_title(str, data)
     L("Broken title found: "..trim_addr(str)..". Deal with it manually, or run this script in standard mode.")
   end
 end
-local function test_title(str) --ran for every folder in title
+local function test_title(str, dlc) --ran for every folder in title
   --Checks if there is at least one file in the content/cmd folder (this is generally what is used to determine what folder should be deleted, maybe we should check for other things too?)
   --check for a .ctx file, indicating a title was not properly installed from eshop, as well as a data folder, to backup saves (proper checkpoint backups should still be done if possible)
+  dlc = dlc or false
   local failed = false
   local so, ro = pcall(fs.list_dir, str)
   data = nil
   if not so then return L("Failed checking in folder: "..ro) end
-  for lk, lv in pairs(ro) do
+  for lk, lv in pairs(ro) do --scan for ctx file
     if (string.match(lv.name, ".ctx")) then 
       failed = true 
       L("ctx file found in "..trim_addr(str))
@@ -72,7 +73,13 @@ local function test_title(str) --ran for every folder in title
     so, ro = pcall(fs.list_dir, str.."/content")
     if not so then return L("Failed checking in content folder: "..ro) end
     local appCount = 0
-    for lk, lv in pairs(ro) do
+    local appFolder = ro
+    if dlc then 
+      local si, ri = pcall(fs.list_dir, str.."/content/00000000")
+      if not si then return L("Failed checking in 00000000 folder for dlc: "..ri) end
+      appFolder = ri
+    end
+    for lk, lv in pairs(appFolder) do
       if (string.match(lv.name, ".app")) then appCount = appCount+1 end
     end
     if appCount == 0 then 
@@ -201,6 +208,8 @@ local function main()
     if (iv.type ~= "dir") then
       return L(trim_addr(iv.name).." in title is not a folder!")
     end
+    local dlc = false
+    if iv.name == "0004008c" then dlc = true end
     local suc, tidL = pcall(fs.list_dir, encTitle.."/"..iv.name)
     if (not suc) then
       return L("Error getting directory list from "..trim_addr(encTitle).."/"..iv.name)
