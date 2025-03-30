@@ -1,6 +1,6 @@
 # gm9-title-fixer
 ## Usage
-Download the `y_title_fixer.firm` file from the Releases to the right, and place it in your `luma/payloads` folder of your sd card, then hold the Y button and turn it on while holding Y. The script should guide you through the process, make sure to read what it says carefully. 
+Download the `y_title_fixer.firm` file from the Releases to the right, and place it in your `luma/payloads` folder of your sd card, put the SD back into the 3ds, then hold the Y button and turn it on while holding Y. The script should guide you through the process, make sure to read what it says carefully. 
 
 After it's done your 3ds will restart, and (hopefully) your titles will be there (except the ones that were deleted). You can delete the `y_title_fixer.firm` afterwards, to not get confused with gm9. 
 
