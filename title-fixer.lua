@@ -4,7 +4,7 @@ local encTitle = ""
 local scan = false
 local asked = false
 local allowed = false
-local THEME_TIDLOWS = {["00009800"]=true, ["00008f00"]=true} -- this makes checking easier later i promise i know it's cursed okay
+local THEME_TIDLOWS = {["0004008c"]=true, ["00009800"]=true, ["000002cc"]=true, ["00008f00"]=true, ["000002cd"]=true, ["000002ce"]=true} -- this makes checking easier later i promise i know it's cursed okay
 local function L(s) --Simple log function
   log = log.."\n"..s
   print("\n"..s)
