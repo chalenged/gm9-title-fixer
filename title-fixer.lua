@@ -4,6 +4,7 @@ local encTitle = ""
 local scan = false
 local asked = false
 local allowed = false
+local THEME_TIDLOWS = {["00009800"]=true, ["00008f00"]=true} -- this makes checking easier later i promise i know it's cursed okay
 local function L(s) --Simple log function
   log = log.."\n"..s
   print("\n"..s)
@@ -54,10 +55,11 @@ local function delete_title(str, data)
     L("Broken title found: "..trim_addr(str)..". Deal with it manually, or run this script in standard mode.")
   end
 end
-local function test_title(str, dlc) --ran for every folder in title
+local function test_title(str, dlc, theme) --ran for every folder in title
   --Checks if there is at least one file in the content/cmd folder (this is generally what is used to determine what folder should be deleted, maybe we should check for other things too?)
   --check for a .ctx file, indicating a title was not properly installed from eshop, as well as a data folder, to backup saves (proper checkpoint backups should still be done if possible)
   dlc = dlc or false
+  theme = theme or false
   local failed = false
   local so, ro = pcall(fs.list_dir, str)
   data = nil
@@ -74,6 +76,7 @@ local function test_title(str, dlc) --ran for every folder in title
     if not so then return L("Failed checking in content folder: "..ro) end
     local appCount = 0
     local appFolder = ro
+    local isTheme = false
     if dlc then 
       local si, ri = pcall(fs.list_dir, str.."/content/00000000")
       if not si then return L("Failed checking in 00000000 folder for dlc: "..ri) end
@@ -82,9 +85,9 @@ local function test_title(str, dlc) --ran for every folder in title
     for lk, lv in pairs(appFolder) do
       if (string.match(lv.name, ".app")) then appCount = appCount+1 end
     end
-    if appCount == 0 then 
+    if appCount == 0 and not theme then 
       failed = true
-      L("No .app files in "..trim_addr(str).."/content!")
+      L("No .app files in "..trim_addr(appFolder).."!")
     end
   end
   if not failed then
@@ -208,7 +211,7 @@ local function main()
     if (iv.type ~= "dir") then
       return L(trim_addr(iv.name).." in title is not a folder!")
     end
-    local dlc = false
+    local dlc = true
     if iv.name == "0004008c" then dlc = true end
     local suc, tidL = pcall(fs.list_dir, encTitle.."/"..iv.name)
     if (not suc) then
@@ -219,7 +222,9 @@ local function main()
       if choice == 1 then
         local str = encTitle.."/"..iv.name.."/"..jv.name 
         show_text(str)
-        failures = failures + test_title(str, dlc)
+        local theme = false
+        if THEME_TIDLOWS[jv.name] then theme = true end
+        failures = failures + test_title(str, dlc, theme)
       elseif choice == 2 then
         local str = string.gsub(encTitle, "/*.*title", "A:/title").."/"..iv.name.."/"..jv.name 
         show_text(str)
