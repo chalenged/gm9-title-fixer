@@ -1,5 +1,5 @@
 local log = ""
-local ver = "1.1.0"
+local ver = "1.1.2"
 local encTitle = ""
 local scan = false
 local asked = false
@@ -76,10 +76,12 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     if not so then return L("Failed checking in content folder: "..ro) end
     local appCount = 0
     local appFolder = ro
-    local isTheme = false
     if dlc then 
       local si, ri = pcall(fs.list_dir, str.."/content/00000000")
-      if not si then return L("Failed checking in 00000000 folder for dlc: "..ri) end
+      if not si then 
+        if not theme then return L("Failed checking in 00000000 folder for dlc: "..ri) else
+          return L("Failed checking in 00000000 folder for theme: "..ri) end
+      end
       appFolder = ri
     end
     for lk, lv in pairs(appFolder) do
@@ -87,7 +89,7 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     end
     if appCount == 0 and not theme then 
       failed = true
-      L("No .app files in "..trim_addr(appFolder).."!")
+      L("No .app files in "..trim_addr(str).."!")
     end
   end
   if not failed then
@@ -211,7 +213,7 @@ local function main()
     if (iv.type ~= "dir") then
       return L(trim_addr(iv.name).." in title is not a folder!")
     end
-    local dlc = true
+    local dlc = false
     if iv.name == "0004008c" then dlc = true end
     local suc, tidL = pcall(fs.list_dir, encTitle.."/"..iv.name)
     if (not suc) then
@@ -224,11 +226,17 @@ local function main()
         show_text(str)
         local theme = false
         if THEME_TIDLOWS[jv.name] then theme = true end
-        failures = failures + test_title(str, dlc, theme)
+        tested = test_title(str, dlc, theme)
+        if type(verified) == "string" or verified == 1  then
+          failures = failures + 1
+        end
       elseif choice == 2 then
         local str = string.gsub(encTitle, "/*.*title", "A:/title").."/"..iv.name.."/"..jv.name 
         show_text(str)
-        failures = failures + verify_title(str)        
+        verified = verify_title(str)
+        if type(verified) == "string" or verified == 1 then
+          failures = failures + 1
+        end       
       end
     end
   end
