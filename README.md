@@ -1,6 +1,6 @@
 # gm9-title-fixer
 ## Usage
-1. Download the `y_title_fixer.firm` file from [here](https://github.com/chalenged/gm9-title-fixer/releases/download/v1.1.1/y_title_fixer.firm)
+1. Download the `y_title_fixer.firm` file from [here](https://github.com/chalenged/gm9-title-fixer/releases/latest/download/y_title_fixer.firm)
 2. place it in your `luma/payloads` folder of your sd card
 3. put the SD back into the 3ds
 4. hold the Y button and turn it on while holding Y
