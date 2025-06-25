@@ -1,5 +1,5 @@
 local log = ""
-local ver = "1.1.3"
+local ver = "1.1.4"
 local encTitle = ""
 local scan = false
 local asked = false
@@ -23,7 +23,7 @@ local function trim_addr (str)
 end
 local function ask_blue()
   if (blue) then return true end
-  ui.show_text("A title failed virtual deletion. \nAgree to the permissions on the bottom screen. \nThis is necessary to delete the offending title. \nIf you refuse, you must delete the offending title yourself.\nIf virtual deletion failed")
+  ui.show_text("A title failed virtual deletion. \nAgree to the permissions on the bottom screen. \nThis is necessary to delete the offending title. \nIf you refuse, you must delete the offending title yourself.\nThe script will attempt deleting directly instead.")
   blue = fs.allow("0:/Nintendo 3DS/", {opts="ask_all"})
   return blue
 end
@@ -96,7 +96,10 @@ local function test_title(str, dlc, theme) --ran for every folder in title
   local failed = false
   local so, ro = pcall(fs.list_dir, str)
   data = nil
-  if not so then return L("Failed checking in folder: "..ro) end
+  if not so then 
+    table.insert(broken, ogstr)
+    return L("Failed checking in folder: "..ro) 
+  end
   for lk, lv in pairs(ro) do --scan for ctx file
     if (string.match(lv.name, ".ctx")) then 
       failed = true 
@@ -106,12 +109,16 @@ local function test_title(str, dlc, theme) --ran for every folder in title
   end
   if not failed then 
     so, ro = pcall(fs.list_dir, str.."/content")
-    if not so then return L("Failed checking in content folder: "..ro) end
+    if not so then 
+      table.insert(broken, ogstr)
+      return L("Failed checking in content folder: "..ro) 
+    end
     local appCount = 0
     local appFolder = ro
     if dlc then 
       local si, ri = pcall(fs.list_dir, str.."/content/00000000")
       if not si then 
+        table.insert(broken, ogstr)
         if not theme then return L("Failed checking in 00000000 folder for dlc: "..ri) else
           return L("Failed checking in 00000000 folder for theme: "..ri) end
       end
@@ -128,7 +135,8 @@ local function test_title(str, dlc, theme) --ran for every folder in title
   if not failed then
     local success, cmd = pcall(fs.list_dir, str .. "/content/cmd")
     if not success then
-      return "Failed to get content/cmd folder: "..content
+      table.insert(broken, ogstr)
+      return ("Failed to get content/cmd folder: "..cmd)
     end
     if #cmd == 0 then 
       failed = true 
@@ -188,7 +196,7 @@ local function ask_perms(force) --force essentially just means attempt to toggle
     return
   end
   asked = true
-  ui.show_text("To fix titles, you must allow permission\nIf you decline, the script will run in \"scan\" mode\nand will only log broken titles, you will\nhave to deal with them yourself")
+  ui.show_text("To fix titles, you must allow permission\nIf you decline, the script will run in \"scan\" mode\nand will only log broken titles, you will\nhave to delete them yourself")
   allowed = fs.allow("A:/title/", {opts="ask_all"})
   scan = not allowed
 end
@@ -221,6 +229,7 @@ local function main()
     ask_perms(true)
     return 1
   end
+  broken = {} -- reset broken titles when starting a new scan.
   
   if scan then L("Running in scan mode.") else L("Running in standard mode") end
   --simply getting into the id1
