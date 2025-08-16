@@ -1,5 +1,5 @@
 local log = ""
-local ver = "1.1.4"
+local ver = "1.1.6"
 local encTitle = ""
 local scan = false
 local asked = false
@@ -323,7 +323,34 @@ if #broken > 0 then
     L(iv)
   end
 end
-local success, res = pcall(fs.write_file, GM9OUT.."/title-fixer_log.txt", "end", log) --append the log file, then ask to show the user
+
+--log file creation will fail if the gm9/out folder doesn't exist, so we assert it does first, starting with gm9.
+local success, gm9 = pcall(fs.list_dir, "0:/")
+if (not success) then
+ L("Failed getting data in 0:/:"..gm9.."\nWhat.")
+end
+local found = false
+for ik, iv in pairs(gm9) do
+  if (iv.name == "gm9" and iv.type == "dir") then found = true end
+end
+if not found then 
+  local succ = pcall(fs.mkdir, "0:/gm9") 
+  if not succ then L("failed creating gm9 folder?!") end
+end
+success, gm9 = pcall(fs.list_dir, "0:/gm9")
+if (not success) then
+  L("Failed getting data in 0:/gm9:"..gm9.."\nWhat.")
+end
+found = false
+for ik, iv in pairs(gm9) do
+  if (iv.name == "out" and iv.type == "dir") then found = true end
+end
+if not found then 
+  local succ = pcall(fs.mkdir, "0:/gm9/out") 
+  if not succ then L("failed creating gm9/out folder?!") end
+end
+
+success, res = pcall(fs.write_file, GM9OUT.."/title-fixer_log.txt", "end", log) --append the log file, then ask to show the user
 if not success then
   L("Failed to open log file! Error: "..res)
   if (ui.ask("Log write failed! (is your sd locked?)\nWould you like to view the log? \n(it was not saved!")) then
@@ -333,4 +360,16 @@ else
   if (ui.ask("Log written to "..GM9OUT.."/title-fixer_log.txt! \nWould you like to view it now?")) then
     ui.show_text_viewer(log)
   end
+end
+
+--After a user installed the scriptrunner firm to their firm0/firm1, i tried to add a check for if it was ran from firm0/firm1 or from luma/gm9/etc. 
+-- HAX seems to always be "sighax" at least as a scriptrunner, unsure if there's a good way to check and give instructions if ran from firm0/firm1. The lua-doc.md says HAX should be sighax "if booted directly from a FIRM partition", but it seems to return this regardless of if it was chainloaded.
+--if (HAX == "sighax") then 
+--  ui.show_qr("You seem to have installed this scriptrunner to a\nfirm partition. Hold R, L, or X and press A\nto boot into \"boot.firm\" on the SD card.\nIt's recommended to follow the linked guide,\nignoring the magnet and flashcart parts, and\nreplacing section II with getting back to this screen.\nThen hold R, L, or X and press A to launch\nSafeB9SInstaller. You can stop after you can boot\nnormally.\nNext time please don't ignore red warning screens.", "https://3ds.hacks.guide/installing-boot9strap-(ntrboot).html")
+--end
+
+-- I have added a small simple check to allow for booting something like safeb9s in case someone does something silly like installing directly to firm partitions.
+if (ui.check_key("R") or ui.check_key("L") or ui.check_key("X")) then -- JUst R would be sufficient but who knows, some people have broken buttons. Additionally, in most cases this will seem just like normal behavior (restarting would boot boot.firm if you have B9S)
+  local success, result = pcall(sys.boot, "0:/boot.firm")
+  if not success then ui.echo("Failed booting boot.firm:\n"..result) end
 end
