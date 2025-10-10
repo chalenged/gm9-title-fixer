@@ -1,5 +1,5 @@
 local log = ""
-local ver = "1.1.6"
+local ver = "1.1.7"
 local encTitle = ""
 local scan = false
 local asked = false
@@ -96,6 +96,7 @@ local function test_title(str, dlc, theme) --ran for every folder in title
   local failed = false
   local so, ro = pcall(fs.list_dir, str)
   data = nil
+  ogstr = str --how did i forget this for so long...
   if not so then 
     table.insert(broken, ogstr)
     return L("Failed checking in folder: "..ro) 
@@ -116,7 +117,7 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     local appCount = 0
     local appFolder = ro
     if dlc then 
-      local si, ri = pcall(fs.list_dir, str.."/content/00000000")
+      local si, ri = pcall(fs.list_dir, str.."/content/00000000") -- i have seen one case of "3DS-Random-Game-Launcher" (000080200-000080205) having a 00000001 folder that is empty. Every DLC i've seen has only the 00000000 folder in content. Should i be more thourough? it feels meaningless to me, let me know if it matters.
       if not si then 
         table.insert(broken, ogstr)
         if not theme then return L("Failed checking in 00000000 folder for dlc: "..ri) else
@@ -304,7 +305,7 @@ local function main()
   return 1 --loops
 end
 
---instead of gotos i use the return of the main function to determine if the script failed or succeeded. Gotos in lua are a bit strange in their restrictions for me.
+--instead of gotos i use the return of the main function to determine if the script failed or succeeded. Gotos in lua are a bit strange in their restrictions for me. I also just hate gotos tbh.
 local result = 1
 while result == 1 do
   result = main()
@@ -353,7 +354,7 @@ end
 success, res = pcall(fs.write_file, GM9OUT.."/title-fixer_log.txt", "end", log) --append the log file, then ask to show the user
 if not success then
   L("Failed to open log file! Error: "..res)
-  if (ui.ask("Log write failed! (is your sd locked?)\nWould you like to view the log? \n(it was not saved!")) then
+  if (ui.ask("Log write failed! (is your sd locked?)\nWould you like to view the log? \n(it was not saved!)")) then
     ui.show_text_viewer(log)
   end
 else
