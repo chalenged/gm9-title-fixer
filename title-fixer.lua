@@ -1,5 +1,6 @@
 local log = ""
-local ver = "1.1.7"
+local tree = "title"
+local ver = "1.1.8"
 local encTitle = ""
 local scan = false
 local asked = false
@@ -27,6 +28,37 @@ local function ask_blue()
   blue = fs.allow("0:/Nintendo 3DS/", {opts="ask_all"})
   return blue
 end
+local function app_check(app)
+  local fail = false
+  if (app:find(".app") == nil and app:find(".tmd") == nil and app:find(".cmd") == nil and app:find(".sav") == nil) then --These should be the only valid file extensions
+    fail = true
+  end
+  if (app:find("^[%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef].%a%a%a$") == nil) then --all .app, .cmd, .sav, and .tmd files should follow this pattern. Anything else is corruption.
+    fail = true;
+  end
+  return fail
+end
+local function restr(str, count) --repeats str count times
+  retstr = ""
+  for _=1,count do retstr = retstr..str end
+  return retstr
+end
+local function atree(dir, depth) --simple tree function, so if nothing is found by the script, you can check title-fixer_tree.txt to check more thoroughly, without having to use a tree command.
+  str = ""
+  local s, r = pcall(fs.list_dir, dir)
+  if not s then
+    L("Failed opening directory "..dir)
+    return str
+  end
+  for lk, lv in pairs(r) do 
+    if (lv.type == "dir") then 
+      str = str..restr("  ",depth)..lv.name.."*\n"..atree(dir.."/"..lv.name, depth+1)
+    else
+      str = str..restr("  ",depth)..lv.name.."\n"
+    end
+  end
+  return str
+end
 
 local function delete_title(str, data)
   local ogstr = str; --Keep a copy of the original string for deletion from 0: drive and for logging.
@@ -37,8 +69,7 @@ local function delete_title(str, data)
     
     for lk, lv in pairs(re) do
       if (string.match(lv.name, ".tmd")) then  --there should only ever be 1 tmd file i think.
-        local su, re = pcall(ui.show_game_info, str
-.."/content/"..lv.name) --Show title information from the A drive, where it is unencrypted, so the user knows what game/app to deal with specifically. 
+        local su, re = pcall(ui.show_game_info, str.."/content/"..lv.name) --Show title information from the A drive, where it is unencrypted, so the user knows what game/app to deal with specifically. 
         if not su then L("Failed showing game info: "..re) end
         
       end
@@ -89,7 +120,7 @@ local function delete_title(str, data)
   end
 end
 local function test_title(str, dlc, theme) --ran for every folder in title
-  --Checks if there is at least one file in the content/cmd folder (this is generally what is used to determine what folder should be deleted, maybe we should check for other things too?)
+  --Checks if there is at least one file in the content/cmd folder 
   --check for a .ctx file, indicating a title was not properly installed from eshop, as well as a data folder, to backup saves (proper checkpoint backups should still be done if possible)
   dlc = dlc or false
   theme = theme or false
@@ -101,12 +132,20 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     table.insert(broken, ogstr)
     return L("Failed checking in folder: "..ro) 
   end
-  for lk, lv in pairs(ro) do --scan for ctx file
+  for lk, lv in pairs(ro) do --scan for files, should only be folders here
     if (string.match(lv.name, ".ctx")) then 
       failed = true 
       L("ctx file found in "..trim_addr(str))
     end
-    if (string.match(lv.name, "data")) then data = str.."/data" end
+    if (lv.type ~= "dir") then --files in here are corruption
+      failed = true
+      L("Unkown file: "..lv.name.." found in "..trim_addr(str))
+    elseif (string.match(lv.name, "data")) then 
+      data = str.."/data" 
+    elseif (not string.match(lv.name, "content")) then 
+      failed = true
+      L("Unexpected folder found: "..lv.name.." in "..str)
+    end
   end
   if not failed then 
     so, ro = pcall(fs.list_dir, str.."/content")
@@ -127,6 +166,18 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     end
     for lk, lv in pairs(appFolder) do
       if (string.match(lv.name, ".app")) then appCount = appCount+1 end
+      if (lv.type ~= "dir") then
+        if (app_check(lv.name)) then
+          L(lv.name.." failed app check in "..str.."/content")
+          table.insert(broken, ogstr)
+          failed = true
+        end
+      else
+        if (not lv.name:match("cmd")) then
+          failed = true
+          L("Unexpected folder found: "..lv.name.." in "..str.."/content")
+        end
+      end
     end
     if appCount == 0 and not theme then 
       failed = true
@@ -142,6 +193,18 @@ local function test_title(str, dlc, theme) --ran for every folder in title
     if #cmd == 0 then 
       failed = true 
       L("No cmd files found in "..trim_addr(str).."!")
+    end
+    for llk, llv in pairs(cmd) do
+      if (llv.type ~= "dir") then
+        if (app_check(llv.name)) then
+          L(llv.name.." failed app check in "..str .. "/content/cmd")
+          failed = true 
+          table.insert(broken, ogstr)
+        end
+      else
+        failed = true
+        L("Unexpected folder found: "..llv.name.." in "..str .. "/content/cmd")        
+      end
     end
   end
   if failed then
@@ -225,7 +288,7 @@ local function main()
   --we will need permission to delete things, otherwise run in scan mode
   ask_perms()
   local choice = get_option()
-  if choice == nil or choice == 4 then return 0 end --choice is nil if player pressed b, treat that as exiting
+  if choice == nil or choice == 4 then return 0 end --choice is nil if user pressed b, treat that as exiting
   if choice == 3 then --ask for perms, toggling if given perms already, asking for perms if not.
     ask_perms(true)
     return 1
@@ -238,14 +301,16 @@ local function main()
   local id1 = id0dir
   local successy, id1list = pcall(fs.list_dir, id0dir)
   if not successy then
-    return L("Failed to initialize id0! Erorr: "..idlist)
+    return L("Failed to initialize id0! Erorr: "..id1list)
   end
   if (#id1list > 1) then return L("Multiple folders/files in id0! (maybe you have multiple id1, or forgot to remove mset9?)") end --id1 check. Even though the script can technically run despite this, it's possible this is the cause of not having apps show up, as well as often being something that should be avoided.
   for ik,iv in pairs(id1list) do
       id1 = id1.."/"..iv["name"]
   end
   L("Running in folder "..id1)
+  L("Creating tree...")
   encTitle = id1.."/title" --the other folders in id1 aren't relevant i think
+  tree = atree(encTitle,0)
   local success, tidH = pcall(fs.list_dir, encTitle)
   if (not success) then
     return L("Failed getting folders in title:"..tidH)
@@ -254,13 +319,17 @@ local function main()
   local failures = 0
   for ik, iv in pairs(tidH) do
     if (iv.type ~= "dir") then
-      if (not string.find(iv.name, "^[TtIiLlEe. ()0-9]*.txt")) then 
+      if (not string.find(iv.name, "^[TtIiLlEe. ()0-9]*.txt")) then --Ignore title.txt, but break on other files. No files should be in here.
         return L(trim_addr(iv.name).." in title is not a folder!")
       else
         L(iv.name .. " found in title, ignoring...")
       end
     else
       local dlc = false
+      if (iv.name:find("^[%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef]$") == nil) then --all Tidhighs (and lows) follow this format (8 hexidecimal digits). Anything else is corruption, or could cause issues (speculation)
+        L("Found invalid folder in title: "..iv.name)
+        table.insert(broken,encTitle.."/"..iv.name)
+      end
       if iv.name == "0004008c" then dlc = true end --DLC are a bit different than standard titles, so treat them as such.
       local suc, tidL = pcall(fs.list_dir, encTitle.."/"..iv.name)
       if (not suc) then
@@ -268,13 +337,16 @@ local function main()
       end
       --test each tid low
       for jk, jv in pairs(tidL) do
-        if choice == 1 then
+        if (jv.name:find("^[%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef]$") == nil) then --all Tidhighs (and lows) follow this format (8 hexidecimal digits). Anything else is corruption, or could cause issues (speculation)
+          L("Found invalid folder: "..jv.name.." in "..encTitle.."/"..iv.name)
+          table.insert(broken,encTitle.."/"..iv.name.."/"..jv.name)
+        elseif choice == 1 then
           local str = encTitle.."/"..iv.name.."/"..jv.name 
           show_text(str)
           local theme = false
           if THEME_TIDLOWS[jv.name] then theme = true end --check if it's a theme from the array, themes are a bit strange
           tested = test_title(str, dlc, theme)
-          if type(verified) == "string" or verified == 1  then
+          if type(tested) == "string" or tested == 1  then
             failures = failures + 1
           end
         elseif choice == 2 then
@@ -317,7 +389,7 @@ else
   L("Process exited with error: "..result)
   ui.echo("An error was encountered during operation: \n"..result.."\nCheck the log or send it to someone to check!")
 end
-log = "Date and Time: "..os.date().."\nVersion "..ver.."\n---\n"..log
+log = "\nDate and Time: "..os.date().."\nVersion "..ver.."\n---\n"..log
 if #broken > 0 then
   L("Delete the following folders manually, backing up saves if necessary: ")
   for ik, iv in pairs(broken) do
@@ -350,7 +422,14 @@ if not found then
   local succ = pcall(fs.mkdir, "0:/gm9/out") 
   if not succ then L("failed creating gm9/out folder?!") end
 end
-
+succcc, ressss = pcall(fs.remove, GM9OUT.."/title-fixer_tree.txt")
+if not succcc then
+  L("Failed deleting tree file! Error: "..ressss)
+end
+succc, resss = pcall(fs.write_file, GM9OUT.."/title-fixer_tree.txt", 0, tree)
+if not succc then
+  L("Failed to open tree file! Error: "..resss)
+end
 success, res = pcall(fs.write_file, GM9OUT.."/title-fixer_log.txt", "end", log) --append the log file, then ask to show the user
 if not success then
   L("Failed to open log file! Error: "..res)
