@@ -16,8 +16,6 @@ If you end up on the home menu instead of the script, make sure the file is in t
 
 A gm9lua script to fix the "missing titles" issue where all installed titles are missing from the home menu, but they still appear normally in the system settings data management. If you get an error in data management, there are X's on titles, titles appear as question marks or black boxes, or the name of a title(s) is wrong, this script will likely make things worse, or do nothing.
 
-~~There is a bug in the current pre-release version of godmode9 that can cause the script to fail, so this script's release will be packaged together with a version of GM9 that has the bug fixed, until the bug is fixed in the main GM9 release.~~
-
 I have decided that releasing as a gm9 scriptrunner firm is more convenient for users. I believe this is the way I will continue doing releases, unless someone has any other suggestions or complaints, in which case open an issue on github.
 
 It's recommended to backup your sd card before using this script. While the script itself is set to backup data, and only deletes titles that have file issues, unforeseen issues (particularly corruption) can cause data loss. 
@@ -28,4 +26,4 @@ You can use the lua script with the most recent release of GodMode9 without havi
 
 Do <code>git clone --recursive https://github.com/chalenged/gm9-title-fixer.git</code> 
 
-Then <code>cd gm9-title-fixer.git</code>, and finally <code>make</code> and it should compile GodMode9 setup to autorun the script.
+Then <code>cd gm9-title-fixer.git</code>, and finally <code>make</code> and it should compile GodMode9 setup to autorun the script as <code>y_title_fixer.firm</code>
