@@ -278,10 +278,21 @@ local function get_option()
   return ui.ask_selection("Choose an option:", opts)
 end
 
-local function show_text(str)
+local function mode_text(choice)
   local scanText = "standard"
   if scan then scanText = "scan" end
-  ui.show_text("gm9-title-fixer ver "..ver.."\nRunning in "..scanText.." mode\nTesting "..str)
+  local testText = nil
+  if choice == 1 then testText = "basic" end
+  if choice == 2 then testText = "verification" end
+  if testText == nil then
+    return scanText .. " mode"
+  else
+    return scanText .. " mode with " .. testText .. " test"
+  end
+end
+
+local function show_progress(choice,title,tidPath)
+  ui.show_text("gm9-title-fixer ver "..ver.."\nRunning in "..mode_text(choice).."\nwithin "..title.."\nTesting "..tidPath)
 end
 
 local function main()
@@ -295,7 +306,9 @@ local function main()
   end
   broken = {} -- reset broken titles when starting a new scan.
   
-  if scan then L("Running in scan mode.") else L("Running in standard mode") end
+  L("Running in "..mode_text(choice)..".")
+  sdcid = fs.read_file("M:/sd_cid.mem", 0, 16)
+  L("SD CID: "..util.bytes_to_hex(sdcid))
   --simply getting into the id1
   local id0dir = "0:/Nintendo 3DS/"..sys.sys_id0
   local id1 = id0dir
@@ -310,6 +323,7 @@ local function main()
   L("Running in folder "..id1)
   L("Creating tree...")
   encTitle = id1.."/title" --the other folders in id1 aren't relevant i think
+  decTitle = "A:/title"
   tree = atree(encTitle,0)
   local success, tidH = pcall(fs.list_dir, encTitle)
   if (not success) then
@@ -337,25 +351,24 @@ local function main()
       end
       --test each tid low
       for jk, jv in pairs(tidL) do
+        local tidPath = "/"..iv.name.."/"..jv.name
         if (jv.name:find("^[%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef][%dabcdef]$") == nil) then --all Tidhighs (and lows) follow this format (8 hexidecimal digits). Anything else is corruption, or could cause issues (speculation)
           L("Found invalid folder: "..jv.name.." in "..encTitle.."/"..iv.name)
-          table.insert(broken,encTitle.."/"..iv.name.."/"..jv.name)
+          table.insert(broken,encTitle..tidPath)
         elseif choice == 1 then
-          local str = encTitle.."/"..iv.name.."/"..jv.name 
-          show_text(str)
+          show_progress(choice, encTitle, tidPath)
           local theme = false
           if THEME_TIDLOWS[jv.name] then theme = true end --check if it's a theme from the array, themes are a bit strange
-          tested = test_title(str, dlc, theme)
+          tested = test_title(encTitle..tidPath, dlc, theme)
           if type(tested) == "string" or tested == 1  then
             failures = failures + 1
           end
         elseif choice == 2 then
-          local str = string.gsub(encTitle, "/*.*title", "A:/title").."/"..iv.name.."/"..jv.name 
-          show_text(str)
-          verified = verify_title(str)
+          show_progress(choice, encTitle, tidPath)
+          verified = verify_title(decTitle..tidPath)
           if type(verified) == "string" or verified == 1 then
             failures = failures + 1
-          end       
+          end
         end
       end
     end
